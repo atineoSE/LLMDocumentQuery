@@ -30,8 +30,11 @@ class Database:
             chunk_overlap=SPLIT_CHUNK_OVERLAP
         )
 
-    def store(self, document_path: str) -> None:
-        loader = PyPDFLoader(document_path)
+    def store(self, document_file: file) -> None:
+        self.document_file = file
+        logging.debug(
+            "DATABASE: storing file at {self.document_file.__path__} in vector DB.")
+        loader = PyPDFLoader(self.document_file.__path__)
         documents = loader.load_and_split(text_splitter=self.text_splitter)
 
         logging.debug(
@@ -49,7 +52,7 @@ class Database:
         metadatas = [d.metadata for d in documents]
         self.vectordb.add_texts(texts=texts, metadatas=metadatas)
 
-    def retrieve(self, query: str) -> list[Document] | None:
+    def retrieve(self, query: str) -> list[str] | None:
         if self.vectordb._collection.count() == 0:
             logging.debug(
                 "DATABASE: no documents in the DB. Nothing to fetch.")
@@ -61,7 +64,7 @@ class Database:
             logging.debug(document.page_content)
             logging.debug(document.metadata)
             logging.debug("---")
-        return documents
+        return [d.page_content for d in documents]
 
     def __del__(self):
         # TODO: cleanup resources
