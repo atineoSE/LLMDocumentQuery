@@ -1,12 +1,12 @@
 import uuid
+import logging
+import random
+import os
 from langchain.vectorstores import Chroma
 from langchain.embeddings import SentenceTransformerEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import PyPDFLoader
 from langchain.schema import Document
-import logging
-import random
-
 
 SPLIT_CHUNK_SIZE = 1500
 SPLIT_CHUNK_OVERLAP = 150
@@ -17,11 +17,17 @@ MMR_FETCH_K = 10
 
 
 class Database:
+    persist_directory: str
+    embedding_function: SentenceTransformerEmbeddings
+    vector_db: Chroma
+    text_splitter: RecursiveCharacterTextSplitter
+    document_file: file | None
+
     def __init__(self):
         self.persist_directory = f'{DOCS_FOLDER}/{str(uuid.uuid4())}/'
         self.embedding_function = SentenceTransformerEmbeddings(
             model_name=SENTENCE_TRANSFORMERS_MODEL)
-        self.vectordb = Chroma(
+        self.vector_db = Chroma(
             persist_directory=self.persist_directory,
             embedding_function=self.embedding_function
         )
@@ -31,6 +37,7 @@ class Database:
         )
 
     def store(self, document_file: file) -> None:
+        self.cleanup()
         self.document_file = file
         logging.debug(
             "DATABASE: storing file at {self.document_file.__path__} in vector DB.")
@@ -50,14 +57,14 @@ class Database:
 
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
-        self.vectordb.add_texts(texts=texts, metadatas=metadatas)
+        self.vector_db.add_texts(texts=texts, metadatas=metadatas)
 
     def retrieve(self, query: str) -> list[str] | None:
-        if self.vectordb._collection.count() == 0:
+        if self.vector_db._collection.count() == 0:
             logging.debug(
                 "DATABASE: no documents in the DB. Nothing to fetch.")
             return None
-        documents = self.vectordb.max_marginal_relevance_search(
+        documents = self.vector_db.max_marginal_relevance_search(
             query=query, k=MMR_K, fetch_k=MMR_FETCH_K)
         logging.debug(f"DATABASE: retrieved {len(documents)} matches")
         for document in documents:
@@ -66,8 +73,9 @@ class Database:
             logging.debug("---")
         return [d.page_content for d in documents]
 
-    def __del__(self):
-        # TODO: cleanup resources
-        # Remove file
-        # Remove persist directory
-        pass
+    def cleanup(self):
+        if self.document_file:
+            os.remove(self.document_file)
+            self.document_file = None
+        self.vector_db.delete_collection()
+        logging.debug("DATABASE: cleaned up vector DB")
