@@ -36,13 +36,14 @@ class Database:
             settings=Settings(anonymized_telemetry=False)
         )
         self.embedding_function = SentenceTransformerEmbeddings(
-            model_name=SENTENCE_TRANSFORMERS_MODEL).embed_documents
+            model_name=SENTENCE_TRANSFORMERS_MODEL)
         self.collection = self.client.get_or_create_collection(
             name=COLLECTION_NAME,
-            embedding_function=self.embedding_function
+            embedding_function=self.embedding_function.embed_documents
         )
         self.vector_db = Chroma(
             collection_name=COLLECTION_NAME,
+            embedding_function=self.embedding_function,
             client=self.client
         )
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -77,11 +78,11 @@ class Database:
             documents=texts
         )
 
-    def retrieve(self, query: str) -> list[str] | None:
+    def retrieve(self, query: str) -> list[str]:
         if self.vector_db._collection.count() == 0:
             logging.debug(
                 "DATABASE: no documents in the DB. Nothing to fetch.")
-            return None
+            return []
         documents = self.vector_db.max_marginal_relevance_search(
             query=query, k=MMR_K, fetch_k=MMR_FETCH_K)
         logging.debug(f"DATABASE: retrieved {len(documents)} matches")
@@ -95,6 +96,6 @@ class Database:
         self.client.delete_collection(name=COLLECTION_NAME)
         self.collection = self.client.get_or_create_collection(
             name=COLLECTION_NAME,
-            embedding_function=self.embedding_function
+            embedding_function=self.embedding_function.embed_documents
         )
         logging.debug("DATABASE: cleaned up vector DB")

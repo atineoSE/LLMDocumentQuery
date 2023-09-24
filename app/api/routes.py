@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request, UploadFile, HTTPException, status
 from fastapi.responses import JSONResponse
 from app.resources.database import Database
+from app.models.query import Query
 
 FILES_FOLDER = "files"
 
@@ -48,7 +49,6 @@ async def upload_document(request: Request, document: UploadFile) -> JSONRespons
 
 
 @router.post("/related_excerpts")
-async def query_document(request: Request, query: str) -> JSONResponse:
+async def query_document(request: Request, query: Query) -> list[str]:
     db: Database = request.app.db
-    results = db.retrieve(query)
-    return JSONResponse(content=json.dumps(results), status_code=200)
+    return db.retrieve(query.query)
