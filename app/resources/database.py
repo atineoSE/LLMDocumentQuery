@@ -1,6 +1,7 @@
 import logging
 import random
 from io import IOBase
+from typing import Mapping, Any
 from chromadb import chromadb
 from chromadb.api import API
 from chromadb.config import Settings
@@ -70,7 +71,7 @@ class Database:
             pass
 
         ids = [str(x) for x in range(len(documents))]
-        metadatas = [d.metadata for d in documents]
+        metadatas: list[Mapping[str, Any]] = [d.metadata for d in documents]
         texts = [d.page_content for d in documents]
         self.collection.add(
             ids=ids,
