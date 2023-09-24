@@ -1,7 +1,10 @@
-import uuid
 import logging
 import random
-import os
+from io import IOBase
+from chromadb import chromadb
+from chromadb.api import API
+from chromadb.config import Settings
+from chromadb.api.models.Collection import Collection
 from langchain.vectorstores import Chroma
 from langchain.embeddings import SentenceTransformerEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -11,37 +14,47 @@ from langchain.schema import Document
 SPLIT_CHUNK_SIZE = 1500
 SPLIT_CHUNK_OVERLAP = 150
 SENTENCE_TRANSFORMERS_MODEL = "all-MiniLM-L6-v2"
-DOCS_FOLDER = "docs"
+DB_FOLDER = "db"
+COLLECTION_NAME = "LLM_VECTOR_DB"
 MMR_K = 3
 MMR_FETCH_K = 10
 
+File = IOBase
+
 
 class Database:
-    persist_directory: str
-    embedding_function: SentenceTransformerEmbeddings
+    client: API
+    collection: Collection
     vector_db: Chroma
+    embedding_function: SentenceTransformerEmbeddings
     text_splitter: RecursiveCharacterTextSplitter
-    document_file: file | None
+    document_path: str
 
     def __init__(self):
-        self.persist_directory = f'{DOCS_FOLDER}/{str(uuid.uuid4())}/'
+        self.client = chromadb.PersistentClient(
+            path=DB_FOLDER,
+            settings=Settings(anonymized_telemetry=False)
+        )
         self.embedding_function = SentenceTransformerEmbeddings(
-            model_name=SENTENCE_TRANSFORMERS_MODEL)
-        self.vector_db = Chroma(
-            persist_directory=self.persist_directory,
+            model_name=SENTENCE_TRANSFORMERS_MODEL).embed_documents
+        self.collection = self.client.get_or_create_collection(
+            name=COLLECTION_NAME,
             embedding_function=self.embedding_function
+        )
+        self.vector_db = Chroma(
+            collection_name=COLLECTION_NAME,
+            client=self.client
         )
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=SPLIT_CHUNK_SIZE,
             chunk_overlap=SPLIT_CHUNK_OVERLAP
         )
+        self.document_path = None
 
-    def store(self, document_file: file) -> None:
+    def store(self, document_path: str) -> None:
         self.cleanup()
-        self.document_file = file
-        logging.debug(
-            "DATABASE: storing file at {self.document_file.__path__} in vector DB.")
-        loader = PyPDFLoader(self.document_file.__path__)
+        self.document_path = document_path
+        loader = PyPDFLoader(document_path)
         documents = loader.load_and_split(text_splitter=self.text_splitter)
 
         logging.debug(
@@ -55,9 +68,14 @@ class Database:
             # Not enough text samples
             pass
 
-        texts = [d.page_content for d in documents]
+        ids = [str(x) for x in range(len(documents))]
         metadatas = [d.metadata for d in documents]
-        self.vector_db.add_texts(texts=texts, metadatas=metadatas)
+        texts = [d.page_content for d in documents]
+        self.collection.add(
+            ids=ids,
+            metadatas=metadatas,
+            documents=texts
+        )
 
     def retrieve(self, query: str) -> list[str] | None:
         if self.vector_db._collection.count() == 0:
@@ -74,8 +92,9 @@ class Database:
         return [d.page_content for d in documents]
 
     def cleanup(self):
-        if self.document_file:
-            os.remove(self.document_file)
-            self.document_file = None
-        self.vector_db.delete_collection()
+        self.client.delete_collection(name=COLLECTION_NAME)
+        self.collection = self.client.get_or_create_collection(
+            name=COLLECTION_NAME,
+            embedding_function=self.embedding_function
+        )
         logging.debug("DATABASE: cleaned up vector DB")

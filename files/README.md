@@ -1,0 +1,1 @@
+Uploaded files are stored temporarily in this folder.
