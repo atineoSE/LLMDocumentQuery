@@ -9,6 +9,7 @@ from fastapi import APIRouter, Request, UploadFile, HTTPException, status
 from fastapi.responses import JSONResponse
 from app.resources.database import Database
 from app.models.query import Query
+from app.resources.LLM import LLM
 
 FILES_FOLDER = "files"
 
@@ -52,3 +53,12 @@ async def upload_document(request: Request, document: UploadFile) -> JSONRespons
 async def query_document(request: Request, query: Query) -> list[str]:
     db: Database = request.app.db
     return db.retrieve(query.query)
+
+
+@router.post("/query_document")
+async def query_document(request: Request, query: Query) -> str:
+    db: Database = request.app.db
+    texts = db.retrieve(query.query)
+    llm: LLM = request.app.llm
+    result = llm.predict(query=query, texts=texts)
+    return result
