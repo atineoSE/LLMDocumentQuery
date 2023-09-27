@@ -11,13 +11,14 @@ from langchain.embeddings import SentenceTransformerEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import PyPDFLoader
 from langchain.schema import Document
+from app.models.query import Query, RetrieveStrategy
 
 SPLIT_CHUNK_SIZE = 1500
 SPLIT_CHUNK_OVERLAP = 150
 SENTENCE_TRANSFORMERS_MODEL = "all-MiniLM-L6-v2"
 DB_FOLDER = "db"
 COLLECTION_NAME = "LLM_VECTOR_DB"
-MMR_K = 3
+TOP_K_MATCHES = 3
 MMR_FETCH_K = 10
 
 File = IOBase
@@ -79,13 +80,25 @@ class Database:
             documents=texts
         )
 
-    def retrieve(self, query: str) -> list[str]:
-        if self.vector_db._collection.count() == 0:
+    def retrieve(self, query: Query) -> list[str]:
+        if self.client.get_or_create_collection(name=COLLECTION_NAME).count() == 0:
             logging.debug(
                 "DATABASE: no documents in the DB. Nothing to fetch.")
             return []
-        documents = self.vector_db.max_marginal_relevance_search(
-            query=query, k=MMR_K, fetch_k=MMR_FETCH_K)
+
+        documents: list[Document] = []
+        logging.debug(f"DATABASE: retrieving documents for query {query.text} \
+                      with strategy {query.retrieve_strategy.name}")
+        match query.retrieve_strategy:
+            case RetrieveStrategy.MMR:
+                documents = self.vector_db.max_marginal_relevance_search(
+                    query=query.text, k=TOP_K_MATCHES, fetch_k=MMR_FETCH_K
+                )
+            case RetrieveStrategy.SIMILAR:
+                documents = self.vector_db.similarity_search(
+                    query=query.text, k=TOP_K_MATCHES
+                )
+
         logging.debug(f"DATABASE: retrieved {len(documents)} matches")
         for document in documents:
             logging.debug(document.page_content)

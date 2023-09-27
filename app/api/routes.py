@@ -52,13 +52,13 @@ async def upload_document(request: Request, document: UploadFile) -> JSONRespons
 @router.post("/related_excerpts")
 async def query_document(request: Request, query: Query) -> list[str]:
     db: Database = request.app.db
-    return db.retrieve(query.query)
+    return db.retrieve(query)
 
 
 @router.post("/query_document")
 async def query_document(request: Request, query: Query) -> str:
     db: Database = request.app.db
-    texts = db.retrieve(query.query)
+    texts = db.retrieve(query)
     llm: LLM = request.app.llm
-    result = llm.predict(query=query, texts=texts)
+    result = llm.predict(query=query.text, texts=texts)
     return result

@@ -1,5 +1,13 @@
-from pydantic import BaseModel
+from enum import Enum
+from pydantic import BaseModel, Field
+
+
+class RetrieveStrategy(Enum):
+    MMR = "MMR"
+    SIMILAR = "SIMILAR"
 
 
 class Query(BaseModel):
-    query: str
+    text: str
+    retrieve_strategy: RetrieveStrategy = Field(
+        default=RetrieveStrategy.SIMILAR)
