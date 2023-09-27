@@ -36,7 +36,8 @@ class LLM:
             login(token=hf_token)
 
         self.llm_type = llm_type
-        self.tokenizer = AutoTokenizer.from_pretrained(llm_type.model_full_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            llm_type.model_full_name)
         self.pipeline = pipeline(
             "text-generation",
             model=llm_type.model_full_name,
@@ -46,7 +47,7 @@ class LLM:
 
     def predict(self, query: str, texts: list[str]) -> str:
         prompt = llm_prompt.format(
-            context="---\n".join(texts),
+            context="\n---\n".join(texts),
             query=query
         )
         logging.debug(f"LLM: calling model {self.llm_type.name} with prompt:")
@@ -55,9 +56,12 @@ class LLM:
         result = self.pipeline(
             prompt,
             eos_token_id=self.tokenizer.eos_token_id,
-            max_length=100
+            max_length=2000
         )
-
         logging.debug(f"LLM: got results {result}")
 
-        return result["generated_text"]
+        answer = result[0]["generated_text"].replace(prompt, "").strip()
+        split_answer = answer.split("\n")[0]
+        logging.debug(f"LLM: answer is \"{split_answer}\"")
+
+        return split_answer
