@@ -40,6 +40,7 @@ class LLM:
             llm_type.model_full_name)
         self.pipeline = pipeline(
             "text-generation",
+            tokenizer=self.tokenizer,
             model=llm_type.model_full_name,
             torch_dtype=torch.float16,
             device_map="auto",
