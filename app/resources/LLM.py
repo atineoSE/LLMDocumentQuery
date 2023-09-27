@@ -36,10 +36,10 @@ class LLM:
             login(token=hf_token)
 
         self.llm_type = llm_type
-        self.tokenizer = AutoTokenizer.from_pretrained(llm_type.name)
+        self.tokenizer = AutoTokenizer.from_pretrained(llm_type.model_full_name)
         self.pipeline = pipeline(
             "text-generation",
-            model=llm_type.name,
+            model=llm_type.model_full_name,
             torch_dtype=torch.float16,
             device_map="auto",
         )
