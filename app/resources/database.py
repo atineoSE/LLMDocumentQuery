@@ -95,8 +95,8 @@ class Database:
             return []
 
         documents: list[Document] = []
-        logging.debug(f"DATABASE: retrieving documents for query {query.text} \
-                      with strategy {query.retrieve_strategy.name}")
+        logging.debug(
+            f"DATABASE: retrieving documents for query \"{query.text}\" with strategy {query.retrieve_strategy.name}")
         match query.retrieve_strategy:
             case RetrieveStrategy.MMR:
                 documents = self.vector_db.max_marginal_relevance_search(

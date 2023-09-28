@@ -32,7 +32,9 @@ class LLM:
     tokenizer: PreTrainedTokenizerBase
     pipeline: Pipeline
 
-    def __init__(self, llm_type: LLMType, hf_token: str = None):
+    def __init__(self, llm_type: LLMType, hf_token: str | None = None):
+        self.llm_type = llm_type
+
         if llm_type == LLMType.FAKE:
             logging.debug("LLM: started FAKE LLM")
             return
@@ -40,7 +42,7 @@ class LLM:
         if hf_token:
             login(token=hf_token)
 
-        self.llm_type = llm_type
+        # Initialize model
         self.tokenizer = AutoTokenizer.from_pretrained(
             llm_type.model_full_name)
         self.pipeline = pipeline(
@@ -54,7 +56,7 @@ class LLM:
 
     def predict(self, query: str, texts: list[str]) -> str:
         if self.llm_type == LLMType.FAKE:
-            return "As a fake LLM, I can say I like that question."
+            return f"As a fake LLM, I can repeat your question \"{query.text}\" and quote the first text:\n{texts[0]}"
 
         prompt = llm_prompt.format(
             context="\n---\n".join(texts),
