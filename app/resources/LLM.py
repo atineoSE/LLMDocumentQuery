@@ -14,6 +14,7 @@ class LLMType(Enum):
     LLAMA2 = "LLAMA2"
     FALCON = "FALCON"
     MPT = "MPT"
+    FAKE = "FAKE"
 
     @property
     def model_full_name(self):
@@ -32,6 +33,10 @@ class LLM:
     pipeline: Pipeline
 
     def __init__(self, llm_type: LLMType, hf_token: str = None):
+        if llm_type == LLMType.FAKE:
+            logging.debug("LLM: started FAKE LLM")
+            return
+
         if hf_token:
             login(token=hf_token)
 
@@ -45,8 +50,12 @@ class LLM:
             torch_dtype=torch.float16,
             device_map="auto",
         )
+        logging.debug(f"LLM: started {llm_type.name} LLM")
 
     def predict(self, query: str, texts: list[str]) -> str:
+        if self.llm_type == LLMType.FAKE:
+            return "As a fake LLM, I can say I like that question."
+
         prompt = llm_prompt.format(
             context="\n---\n".join(texts),
             query=query

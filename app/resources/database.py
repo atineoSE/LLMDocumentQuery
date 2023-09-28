@@ -1,7 +1,11 @@
 import logging
 import random
+import uuid
+import shutil
+import os
 from io import IOBase
-from typing import Mapping, Any
+from pathlib import Path
+from typing import Mapping, Any, BinaryIO
 from chromadb import chromadb
 from chromadb.api import API
 from chromadb.config import Settings
@@ -17,11 +21,10 @@ SPLIT_CHUNK_SIZE = 1500
 SPLIT_CHUNK_OVERLAP = 150
 SENTENCE_TRANSFORMERS_MODEL = "all-MiniLM-L6-v2"
 DB_FOLDER = "db"
+FILES_FOLDER = "files"
 COLLECTION_NAME = "LLM_VECTOR_DB"
 TOP_K_MATCHES = 3
 MMR_FETCH_K = 10
-
-File = IOBase
 
 
 class Database:
@@ -30,7 +33,6 @@ class Database:
     vector_db: Chroma
     embedding_function: SentenceTransformerEmbeddings
     text_splitter: RecursiveCharacterTextSplitter
-    document_path: str
 
     def __init__(self):
         self.client = chromadb.PersistentClient(
@@ -54,12 +56,17 @@ class Database:
         )
         self.document_path = None
 
-    def store(self, document_path: str) -> None:
-        self.cleanup()
-        self.document_path = document_path
+    def store(self, document: BinaryIO) -> None:
+        self._cleanup_previous_document()
+
+        # Persist file locally
+        document_path = f"{FILES_FOLDER}/{uuid.uuid4()}.pdf"
+        with open(document_path, "wb") as file:
+            shutil.copyfileobj(document, file)
+
+        # Load and split document into chunks
         loader = PyPDFLoader(document_path)
         documents = loader.load_and_split(text_splitter=self.text_splitter)
-
         logging.debug(
             f"DATABASE: split input document into {len(documents)} texts")
         try:
@@ -71,6 +78,7 @@ class Database:
             # Not enough text samples
             pass
 
+        # Store chunks in DB
         ids = [str(x) for x in range(len(documents))]
         metadatas: list[Mapping[str, Any]] = [d.metadata for d in documents]
         texts = [d.page_content for d in documents]
@@ -106,7 +114,12 @@ class Database:
             logging.debug("---")
         return [d.page_content for d in documents]
 
-    def cleanup(self):
+    def _cleanup_previous_document(self):
+        # Cleanup previous files
+        for path in Path(FILES_FOLDER).glob("*.pdf"):
+            os.remove(path)
+
+        # Cleanup DB
         self.client.delete_collection(name=COLLECTION_NAME)
         self.collection = self.client.get_or_create_collection(
             name=COLLECTION_NAME,
