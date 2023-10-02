@@ -1,5 +1,7 @@
 [browser]
 gatherUsageStats = false
-headless = true
-port = 6000
 
+[server]
+port = 6000
+headless = true
+address = "0.0.0.0"
