@@ -1,0 +1,5 @@
+[browser]
+gatherUsageStats = false
+headless = true
+port = 6000
+
