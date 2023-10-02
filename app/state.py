@@ -24,3 +24,6 @@ class State:
     def __init__(self):
         self.db = Database()
         self.llm = LLM(llm_type=LLMType(LLM_TYPE), hf_token=HF_TOKEN)
+
+
+app_state = State()

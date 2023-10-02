@@ -57,7 +57,7 @@ class Database:
         self.document_path = None
 
     def store(self, document: BinaryIO) -> None:
-        self._cleanup_previous_document()
+        self.cleanup_previous_document()
 
         # Persist file locally
         document_path = f"{FILES_FOLDER}/{uuid.uuid4()}.pdf"
@@ -114,7 +114,7 @@ class Database:
             logging.debug("---")
         return [d.page_content for d in documents]
 
-    def _cleanup_previous_document(self):
+    def cleanup_previous_document(self):
         # Cleanup previous files
         for path in Path(FILES_FOLDER).glob("*.pdf"):
             os.remove(path)

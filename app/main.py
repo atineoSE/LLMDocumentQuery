@@ -1,7 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
 from app.api.routes import router
-from app.state import State
+from app.state import app_state
 
 app = FastAPI()
 app.include_router(router)
@@ -9,7 +9,8 @@ app.include_router(router)
 
 @app.on_event("startup")
 def startup_db_client():
-    app.state = State()
+    # TODO: import globally
+    app.state = app_state
 
 
 @app.on_event("shutdown")

@@ -56,7 +56,11 @@ class LLM:
 
     def predict(self, query: str, texts: list[str]) -> str:
         if self.llm_type == LLMType.FAKE:
-            return f"As a fake LLM, I can repeat your question \"{query.text}\" and quote the first text:\n{texts[0]}"
+            output = f"As a fake LLM, I can repeat your question \"{query}\""
+            if texts:
+                output += " and quote the first text:\n{texts[0]}"
+
+            return output
 
         prompt = llm_prompt.format(
             context="\n---\n".join(texts),

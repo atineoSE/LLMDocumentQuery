@@ -1,10 +1,8 @@
 import logging
 import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
-from app.state import State
+from app.state import app_state
 from app.models.query import Query, RetrieveStrategy
-
-app_state = State()
 
 
 st.set_page_config(
@@ -16,16 +14,26 @@ st.set_page_config(
 gui_state = st.session_state
 
 
-def _update_document(file):
-    logging.debug(f"Loading document \"{file.name}\"")
-    with st.spinner("Uploading document..."):
-        app_state.db.store(file)
+def _update_document():
+    if (file := gui_state.get("document", None)) is not None:
+        _reset_answer()
+        _reset_query()
+        logging.debug(f"Loading document \"{file.name}\"")
+        with st.spinner("Uploading document..."):
+            app_state.db.store(file)
 
 
 def _query_LLM():
-    if (query_text := gui_state.get("query_text", None)) is None:
+    query_text = gui_state.get("query_text", None)
+    if query_text:
+        query_text = query_text.strip()
+    if not query_text:
         logging.debug("No query available")
         return
+
+    if gui_state.get("document", None) is None:
+        logging.debug("Cleaning up previous document")
+        app_state.db.cleanup_previous_document()
 
     with st.spinner("Getting answer..."):
         query = Query(
@@ -33,14 +41,17 @@ def _query_LLM():
             retrieve_strategy=RetrieveStrategy.SIMILAR
         )
         texts = app_state.db.retrieve(query=query)
-        gui_state["answer"] = app_state.llm.predict(query=query, texts=texts)
+        gui_state["answer"] = app_state.llm.predict(
+            query=query.text, texts=texts)
 
 
 def _reset_answer():
+    logging.debug(f"Resetting answer")
     gui_state["answer"] = ""
 
 
 def _reset_query():
+    logging.debug(f"Resetting query")
     gui_state["query_text"] = ""
 
 
@@ -49,17 +60,13 @@ def _document_load():
     st.write("Once uploaded, you can ask multiple times over the same document. \
             Upload a new document to replace.")
 
-    uploaded_file = st.file_uploader(
+    st.file_uploader(
         "document",
         type="pdf",
         key="document",
-        label_visibility="hidden"
+        label_visibility="hidden",
+        on_change=_update_document
     )
-
-    if uploaded_file is not None:
-        _reset_answer()
-        _reset_query()
-        _update_document(uploaded_file)
 
 
 def _text_input():
@@ -74,7 +81,7 @@ def _text_input():
 
 def _answer():
     answer = gui_state.get("answer", "")
-    st.text(answer)
+    st.write(answer)
 
 
 _document_load()
