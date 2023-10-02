@@ -54,7 +54,6 @@ class Database:
             chunk_size=SPLIT_CHUNK_SIZE,
             chunk_overlap=SPLIT_CHUNK_OVERLAP
         )
-        self.document_path = None
 
     def store(self, document: BinaryIO) -> None:
         self.cleanup_previous_document()
@@ -94,9 +93,24 @@ class Database:
                 "DATABASE: no documents in the DB. Nothing to fetch.")
             return []
 
-        documents: list[Document] = []
         logging.debug(
             f"DATABASE: retrieving documents for query \"{query.text}\" with strategy {query.retrieve_strategy.name}")
+
+        query_results = self.collection.query(
+            query_texts=[query.text],
+            n_results=TOP_K_MATCHES
+        )
+        logging.debug("DATABASE: got following query results")
+        logging.debug(query_results)
+        documents = query_results["documents"][0]
+
+        # documents = self._retrieve_with_lanchain(query)
+
+        return documents
+
+    def _retrieve_with_lanchain(self, query: Query) -> list[str]:
+        # TODO: fix LangChain's error: InvalidCollectionException: Collection xxx does not exist.
+        documents: list[Document] = []
         match query.retrieve_strategy:
             case RetrieveStrategy.MMR:
                 documents = self.vector_db.max_marginal_relevance_search(

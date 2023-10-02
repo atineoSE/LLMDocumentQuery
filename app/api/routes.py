@@ -6,12 +6,13 @@ from fastapi.responses import JSONResponse
 from app.resources.database import Database
 from app.models.query import Query
 from app.resources.LLM import LLM
+from app.state import app_state
 
 router = APIRouter()
 
 
 @router.post("/upload_document")
-async def upload_document(request: Request, document: UploadFile) -> JSONResponse:
+async def upload_document(document: UploadFile) -> JSONResponse:
     # Check file type
     if (filename := document.filename) is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -21,8 +22,7 @@ async def upload_document(request: Request, document: UploadFile) -> JSONRespons
                             detail="Only PDF files are supported")
 
     try:
-        db: Database = request.app.state.db
-        db.store(document.file)
+        app_state.db.store(document.file)
         return JSONResponse(content="Document successfully received")
     except Exception as exc:
         logging.error(exc)
@@ -31,15 +31,18 @@ async def upload_document(request: Request, document: UploadFile) -> JSONRespons
 
 
 @router.post("/related_excerpts")
-async def query_document(request: Request, query: Query) -> list[str]:
-    db: Database = request.app.state.db
-    return db.retrieve(query)
+async def related_excerpts(query: Query) -> list[str]:
+    return app_state.db.retrieve(query)
 
 
 @router.post("/query_document")
-async def query_document(request: Request, query: Query) -> str:
-    db: Database = request.app.state.db
-    texts = db.retrieve(query)
-    llm: LLM = request.app.llm
-    result = llm.predict(query=query.text, texts=texts)
+async def query_document(query: Query) -> str:
+    texts = app_state.db.retrieve(query)
+    result = app_state.llm.predict(query=query.text, texts=texts)
     return result
+
+
+@router.delete("/clear_document")
+async def clear_document() -> JSONResponse:
+    app_state.db.cleanup_previous_document()
+    return JSONResponse("OK")

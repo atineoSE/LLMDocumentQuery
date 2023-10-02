@@ -58,7 +58,7 @@ class LLM:
         if self.llm_type == LLMType.FAKE:
             output = f"As a fake LLM, I can repeat your question \"{query}\""
             if texts:
-                output += " and quote the first text:\n{texts[0]}"
+                output += f" and quote the first text:\n{texts[0]}"
 
             return output
 

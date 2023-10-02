@@ -9,8 +9,7 @@ app.include_router(router)
 
 @app.on_event("startup")
 def startup_db_client():
-    # TODO: import globally
-    app.state = app_state
+    pass
 
 
 @app.on_event("shutdown")

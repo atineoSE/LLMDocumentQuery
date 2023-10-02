@@ -2,7 +2,6 @@ import os
 import logging
 import sys
 from dotenv import load_dotenv
-from app.api.routes import router
 from app.resources.database import Database
 from app.resources.LLM import LLM, LLMType
 
