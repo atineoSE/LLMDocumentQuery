@@ -19,7 +19,7 @@ def _update_document():
         _reset_answer()
         _reset_query()
         logging.debug(f"Loading document \"{file.name}\"")
-        with st.spinner("Uploading document..."):
+        with st.spinner("Processing document..."):
             app_state.db.store(file)
 
 
@@ -55,8 +55,15 @@ def _reset_query():
     gui_state["query_text"] = ""
 
 
+def _header():
+    st.write("## Query your document")
+    st.write(
+        f"Powered by open source model: {app_state.llm.llm_type.model_full_name}")
+    st.write("Running on a NVIDIA RTX A6000")
+
+
 def _document_load():
-    st.write("## Upload your document")
+    st.write("### Upload your document")
     st.write("Once uploaded, you can ask multiple times over the same document. \
             Upload a new document to replace.")
 
@@ -71,7 +78,7 @@ def _document_load():
 
 def _text_input():
     st.text_input(
-        "Query:",
+        "### Query",
         placeholder="What is the main conclusion of the article?",
         key="query_text",
         on_change=_reset_answer
@@ -84,6 +91,7 @@ def _answer():
     st.write(answer)
 
 
+_header()
 _document_load()
 _text_input()
 _answer()
